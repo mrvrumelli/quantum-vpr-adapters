@@ -4,7 +4,7 @@ import csv
 from io import StringIO
 from pathlib import Path
 
-from .data import EVAL_SPLITS, IMAGE_COLUMNS, POSITIVE_COLUMNS
+from .data import IMAGE_COLUMNS, POSITIVE_COLUMNS
 
 # Leave ten unused frames between adjacent parts of the route.
 FRAME_RANGES = {"train": range(0, 80), "val": range(90, 140), "test": range(150, 200)}
@@ -35,11 +35,10 @@ def prepare_gardens_point(root: Path) -> None:
                 IMAGE_COLUMNS,
                 ((f"{traversal}-{frame:03d}", f"{traversal}/Image{frame:03d}.jpg") for frame in frames),
             )
-        if split in EVAL_SPLITS:
-            files[root / split / "positives.csv"] = _csv_text(
-                POSITIVE_COLUMNS,
-                ((f"{QUERY}-{frame:03d}", f"{GALLERY}-{frame:03d}") for frame in frames),
-            )
+        files[root / split / "positives.csv"] = _csv_text(
+            POSITIVE_COLUMNS,
+            ((f"{QUERY}-{frame:03d}", f"{GALLERY}-{frame:03d}") for frame in frames),
+        )
 
     pending = {}
     for path, contents in files.items():

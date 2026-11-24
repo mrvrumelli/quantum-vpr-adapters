@@ -74,3 +74,13 @@ def load_cache(path: Path) -> SplitCache:
             return SplitCache(header["split"], header["provenance"], **groups)
         except (KeyError, TypeError) as exc:
             raise ValueError(f"{path}: invalid cache metadata") from exc
+
+
+def load_split_cache(
+    cache_dir: Path, split: str, manifests: dict[str, tuple[ImageRecord, ...]]
+) -> SplitCache:
+    path = cache_dir / f"{split}.npz"
+    cache = load_cache(path)
+    if cache.split != split or any(getattr(cache, role).images != manifests[role] for role in ROLES):
+        raise ValueError(f"{path}: cached split or image rows differ from the manifests. Re-extract descriptors.")
+    return cache
