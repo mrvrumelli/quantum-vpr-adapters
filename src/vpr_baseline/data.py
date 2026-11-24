@@ -66,7 +66,19 @@ def load_positives(
     """Map evaluation positives to gallery indices in query-manifest order."""
     if split not in EVAL_SPLITS:
         raise ValueError("positive labels are used only for val and test evaluation")
-    path = root / split / "positives.csv"
+    return _load_positives(root / split / "positives.csv", gallery, queries)
+
+
+def load_training_positives(
+    root: Path, gallery: tuple[ImageRecord, ...], queries: tuple[ImageRecord, ...]
+) -> list[set[int]]:
+    """Read the train-only positive mapping in training-query order."""
+    return _load_positives(root / "train" / "positives.csv", gallery, queries)
+
+
+def _load_positives(
+    path: Path, gallery: tuple[ImageRecord, ...], queries: tuple[ImageRecord, ...]
+) -> list[set[int]]:
     gallery_indices = {record.image_id: index for index, record in enumerate(gallery)}
     query_positives: dict[str, set[int]] = {record.image_id: set() for record in queries}
     for query_id, gallery_id in _read_rows(path, POSITIVE_COLUMNS):

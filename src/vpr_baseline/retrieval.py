@@ -46,3 +46,10 @@ def recall_at_k(
         for row, matches in zip(ranked_indices.tolist(), positives, strict=True)
     ]
     return {k: sum(rank <= k for rank in first_hits) / len(first_hits) for k in ks}
+
+
+def evaluate_recall(
+    queries: Tensor, gallery: Tensor, positives: list[set[int]], query_batch_size: int = 256
+) -> dict[str, float]:
+    rankings = rank_cosine(queries, gallery, max(RECALL_KS), query_batch_size)
+    return {f"Recall@{k}": value for k, value in recall_at_k(rankings, positives).items()}

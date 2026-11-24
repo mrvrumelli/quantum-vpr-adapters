@@ -2,7 +2,7 @@ import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from vpr_baseline.data import SPLITS, load_manifests, load_positives
+from vpr_baseline.data import SPLITS, load_manifests, load_positives, load_training_positives
 from vpr_baseline.gardens import prepare_gardens_point
 
 
@@ -46,6 +46,15 @@ class DatasetTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "missing positive"):
             load_positives(self.root, "val", records["gallery"], records["query"])
 
+    def test_training_labels_require_the_training_mapping(self):
+        records = load_manifests(self.root)["train"]
+        with self.assertRaises(FileNotFoundError):
+            load_training_positives(self.root, records["gallery"], records["query"])
+        path = self.root / "train/positives.csv"
+        path.write_text("query_id,gallery_id\ntrain-query,val-gallery\n", encoding="utf-8")
+        with self.assertRaisesRegex(ValueError, "unknown query or gallery ID"):
+            load_training_positives(self.root, records["gallery"], records["query"])
+
     def test_gardens_point_manifest_protocol(self):
         dataset = self.root / "gardens"
         for traversal in ("day_right", "night_right"):
@@ -58,6 +67,11 @@ class DatasetTests(unittest.TestCase):
         self.assertEqual([len(manifests[split]["gallery"]) for split in SPLITS], [80, 50, 50])
         self.assertEqual(manifests["val"]["gallery"][0].image_id, "day_right-090")
         self.assertEqual(manifests["test"]["query"][-1].image_id, "night_right-199")
-        self.assertFalse((dataset / "train/positives.csv").exists())
+        train = manifests["train"]
+        self.assertEqual(train["query"][0].image_id, "night_right-000")
+        self.assertEqual(train["gallery"][-1].image_id, "day_right-079")
+        self.assertEqual(
+            load_training_positives(dataset, train["gallery"], train["query"]), [{i} for i in range(80)]
+        )
         val = manifests["val"]
         self.assertEqual(load_positives(dataset, "val", val["gallery"], val["query"]), [{i} for i in range(50)])

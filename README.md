@@ -1,6 +1,6 @@
-# Classical VPR baseline
+# Classical VPR baseline and adapters
 
-This project extracts frozen CosPlace descriptors with PyTorch and retrieves gallery images by exact cosine similarity. The CLI reports Recall@1, Recall@5, and Recall@10 on validation and test splits. Training or adapter code can use the cached training descriptors in a later experiment.
+This project extracts frozen CosPlace descriptors with PyTorch and retrieves gallery images by exact cosine similarity. It also trains and evaluates Direct and Residual MLP adapters on cached descriptors. The CLI reports Recall@1, Recall@5, and Recall@10 on validation and test splits.
 
 ## Install
 
@@ -62,6 +62,7 @@ dataset_root/
   train/
     gallery.csv
     query.csv
+    positives.csv
   val/
     gallery.csv
     query.csv
@@ -79,7 +80,7 @@ image_id,path
 val-g001,day_right/Image090.jpg
 ```
 
-Each evaluation `positives.csv` uses columns `query_id,gallery_id` with one row per relevant pair. The first column must refer to the current split's query manifest and the second to its gallery manifest. Include at least one positive for every query. Extraction checks the image manifests for overlap and reads images from the selected split. Evaluation opens the selected split's labels after checking the cache against its manifests. Use validation for experiment selection and reserve test for the final evaluation.
+Each `positives.csv` uses columns `query_id,gallery_id` with one row per relevant pair. The first column must refer to the current split's query manifest and the second to its gallery manifest. Include at least one positive for every query. Training requires `train/positives.csv`. Extraction checks the image manifests for overlap and reads images from the selected split. Evaluation opens the selected split's labels after checking the cache against its manifests. Use validation for experiment selection and reserve test for the final evaluation.
 
 ```csv
 query_id,gallery_id
@@ -107,9 +108,68 @@ Each split writes one `artifacts/gardens-point/<split>.npz` archive. It holds `g
 
 Retrieval normalizes both matrices and computes their dot products in query batches. Descending scores determine the ranks, with ties resolved in gallery-manifest order. Recall@K is the fraction of all queries with at least one labeled positive in the first `min(K, gallery size)` results. Scores are fractions in `[0, 1]`.
 
+## Train the classical adapters
+
+Both models take a 512-dimensional frozen CosPlace descriptor `z`. The shared MLP uses a linear `512 → 8` projection, a linear `8 → 4` layer followed by ReLU, and a linear `4 → 512` projection. With `delta` as the output of these layers, Direct returns `L2Normalize(delta)` and Residual returns `L2Normalize(z + alpha * delta)`. The same weights transform both gallery and query descriptors within each run. `alpha` is fixed during residual training and defaults to `0.1`.
+
+Use the existing `train.npz` and `val.npz` Phase 1 caches. If you already prepared Gardens Point during Phase 1, rerun `prepare-gardens-point` to add same-frame training labels to `train/positives.csv`. The matching uses frame numbers from `night_right` queries and `day_right` gallery images. Existing descriptor caches can be reused directly. Adapter training and evaluation run on CPU and only require the CSVs and caches.
+
+Each epoch draws one labeled positive and one eligible negative per training query. A gallery frame is eligible only if it is more than `--negative-window` frames away from **every** labeled positive for that query. The window is inclusive at its boundary and uses gallery filenames such as `Image090.jpg` or `090.jpg` as frame numbers. Use a single numbered gallery traversal per split for this policy. Training fails if a query has no positive or no eligible negative. The objective is the mean hinge loss `max(0, margin + cosine(query, negative) - cosine(query, positive))`.
+
+```bash
+vpr-baseline prepare-gardens-point --dataset-root data/GardensPointWalking
+export OMP_NUM_THREADS=1
+for adapter in direct residual; do
+  vpr-baseline train-adapter --dataset-root data/GardensPointWalking \
+    --cache-dir artifacts/gardens-point --adapter "$adapter" \
+    --output-dir "artifacts/gardens-point-adapters/$adapter"
+done
+```
+
+| Option | Default |
+| --- | --- |
+| `--down-dim`, `--hidden-dim` | `8`, `4` |
+| `--alpha` | `0.1` for Residual |
+| `--epochs`, `--patience` | `50`, `10` |
+| `--learning-rate`, `--batch-size` | `0.001`, `16` with Adam |
+| `--margin`, `--negative-window` | `0.2`, `5` frames |
+| `--seed` | `0` |
+
+Use the same seed, cache, widths, and training settings for both variants. The seed controls initialization and triplet sampling. For reproducibility, use the pinned dependencies and the same CPU thread count. Use a new output directory for each run. The command writes `best.pt` and `history.json`, which records the configuration, sampled training loss, validation loss across all eligible validation triplets, and validation Recall@1/5/10 for every epoch.
+
+Only training triplets contribute to parameter updates. Validation Recall@1 selects the checkpoint, followed by Recall@5 and Recall@10 to break ties. Exact ties keep the earlier epoch. Training stops after `--patience` epochs without a better tuple. Review both loss histories alongside recall to monitor overfitting.
+
+### Evaluate and compare
+
+Evaluate a saved checkpoint or compare both adapters and original CosPlace on the same validation labels and gallery. All three use the original cosine ranking, tie handling, and Recall@K implementation. `--output` saves the printed report as JSON.
+
+```bash
+vpr-baseline evaluate --dataset-root data/GardensPointWalking \
+  --cache-dir artifacts/gardens-point --split val \
+  --adapter-checkpoint artifacts/gardens-point-adapters/direct/best.pt
+
+vpr-baseline compare-adapters --dataset-root data/GardensPointWalking \
+  --cache-dir artifacts/gardens-point --split val \
+  --direct-checkpoint artifacts/gardens-point-adapters/direct/best.pt \
+  --residual-checkpoint artifacts/gardens-point-adapters/residual/best.pt \
+  --output artifacts/gardens-point-adapters/validation.json
+```
+
+Once the configurations and checkpoints are fixed, run the separate test evaluation with the Phase 1 `test.npz` cache.
+
+```bash
+vpr-baseline compare-adapters --dataset-root data/GardensPointWalking \
+  --cache-dir artifacts/gardens-point --split test \
+  --direct-checkpoint artifacts/gardens-point-adapters/direct/best.pt \
+  --residual-checkpoint artifacts/gardens-point-adapters/residual/best.pt \
+  --output artifacts/gardens-point-adapters/test.json
+```
+
+Gardens Point provides 80 training pairs and two 50-query evaluation splits from one campus route. A single query changes Recall@K by two percentage points. The temporal window reduces ambiguity from adjacent frames, and distant frames can still depict visually similar places. Treat single-seed measurements on this protocol as preliminary.
+
 ## Tests
 
-Run the unit suite and the offline CLI smoke test on generated images and synthetic labels. The real-weight test runs when `COSPLACE_CHECKPOINT` is set.
+Run the unit suite and offline CLI smoke tests on generated images, synthetic descriptors, and synthetic labels. The optional Phase 1 real-weight test runs when `COSPLACE_CHECKPOINT` is set.
 
 ```bash
 python -m unittest discover -s tests -v
