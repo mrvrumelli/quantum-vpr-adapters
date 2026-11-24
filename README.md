@@ -1,1 +1,120 @@
-# quantum-vpr-adapters
+# Classical VPR baseline
+
+This project extracts frozen CosPlace descriptors with PyTorch and retrieves gallery images by exact cosine similarity. The CLI reports Recall@1, Recall@5, and Recall@10 on validation and test splits. Training or adapter code can use the cached training descriptors in a later experiment.
+
+## Install
+
+The dependency versions are pinned in `pyproject.toml`. The commands below use Python 3.11 and run inference on CPU by default.
+
+```bash
+python3.11 -m venv .venv
+source .venv/bin/activate
+python -m pip install -e .
+vpr-baseline --help
+```
+
+## Get the checkpoint
+
+Download `resnet18_512_cosplace.pth`, the official CosPlace v1.0 ResNet-18 checkpoint. The asset is 45,832,971 bytes (43.7 MiB). The loader checks the SHA-256 below and loads the full state dict strictly. The local architecture uses torchvision's ResNet-18 through the final convolutional stage, followed by CosPlace's channel normalization, learned GeM pooling, linear projection, and descriptor normalization. The model runs with all gradients disabled, in evaluation mode and under PyTorch inference mode. [Official release assets](https://github.com/gmberton/CosPlace/releases/expanded_assets/v1.0) · [Upstream architecture](https://github.com/gmberton/CosPlace/blob/52b56e95ea62245281281f3bafd7b9390d19a0fd/cosplace_model/cosplace_network.py)
+
+```bash
+mkdir -p checkpoints
+curl --fail --location \
+  https://github.com/gmberton/CosPlace/releases/download/v1.0/resnet18_512_cosplace.pth \
+  --output checkpoints/resnet18_512_cosplace.pth
+shasum -a 256 checkpoints/resnet18_512_cosplace.pth
+```
+
+Expected SHA-256
+
+```text
+db09310a175e325fe25e7a460b41886ab9357b19c41d370a9ed3ed81bc9abf9f
+```
+
+The checkpoint produces **512 values per image**. A missing or changed checkpoint fails before inference. Loading the model needs only this local file. CosPlace code is MIT-licensed and the upstream notice is included. The release page publishes the weights without a separate asset-specific license notice. The weights were trained on SF-XL, which is unnecessary for this baseline. [Upstream project](https://github.com/gmberton/CosPlace) · [CosPlace MIT notice](LICENSES/CosPlace.txt)
+
+## Prepare Gardens Point Walking
+
+Manually download only `GardensPointWalking.zip` (31.6 MB) from *Day and Night, Left and Right* by Arren Glover and Michael Milford, Queensland University of Technology. The Zenodo metadata lists CC BY 4.0 and an archive MD5 of `1284fe9747dd5cb3e6c3358b37ae361f`. Keep the source attribution with any redistribution. The CLI works with local images and does no network I/O. [Dataset record](https://doi.org/10.5281/zenodo.4590133) · [License](https://creativecommons.org/licenses/by/4.0/)
+
+Extract the archive into `data/GardensPointWalking` so that this directory directly contains `day_right/` and `night_right/`. Those folders must contain `Image000.jpg` through `Image199.jpg`.
+
+```bash
+mkdir -p data/GardensPointWalking
+unzip ~/Downloads/GardensPointWalking.zip -d data/GardensPointWalking
+vpr-baseline prepare-gardens-point --dataset-root data/GardensPointWalking
+```
+
+The gallery uses the day-right traversal and the queries use night-right. A query's positive is the gallery frame with the same number. This repository's protocol uses contiguous parts of one campus route and leaves ten unused frames at each boundary. Scores describe held-out segments of that route. Record the split and positive definition alongside any scores.
+
+| Split | Frame IDs in each traversal | Images per role |
+| --- | --- | ---: |
+| `train` | `000–079` | 80 |
+| `val` | `090–139` | 50 |
+| `test` | `150–199` | 50 |
+
+### Use another small dataset
+
+Create the following UTF-8 CSV manifests under a dataset root. Assign location groups to splits before writing image lists. Keep near-duplicates and all visits to a location in the same split when the dataset allows it. `prepare-gardens-point` creates the same layout for Gardens Point.
+
+```text
+dataset_root/
+  train/
+    gallery.csv
+    query.csv
+  val/
+    gallery.csv
+    query.csv
+    positives.csv
+  test/
+    gallery.csv
+    query.csv
+    positives.csv
+```
+
+Each image CSV uses columns `image_id,path`. Paths are relative to the dataset root and IDs and resolved paths must be unique across the six image manifests. CSV row order defines descriptor row order. Here's a sample gallery row.
+
+```csv
+image_id,path
+val-g001,day_right/Image090.jpg
+```
+
+Each evaluation `positives.csv` uses columns `query_id,gallery_id` with one row per relevant pair. The first column must refer to the current split's query manifest and the second to its gallery manifest. Include at least one positive for every query. Extraction checks the image manifests for overlap and reads images from the selected split. Evaluation opens the selected split's labels after checking the cache against its manifests. Use validation for experiment selection and reserve test for the final evaluation.
+
+```csv
+query_id,gallery_id
+val-q001,val-g001
+```
+
+## Extract and evaluate
+
+```bash
+for split in train val test; do
+  vpr-baseline extract --dataset-root data/GardensPointWalking \
+    --split "$split" --checkpoint checkpoints/resnet18_512_cosplace.pth \
+    --cache-dir artifacts/gardens-point
+done
+
+vpr-baseline evaluate --dataset-root data/GardensPointWalking --split val \
+  --cache-dir artifacts/gardens-point
+vpr-baseline evaluate --dataset-root data/GardensPointWalking --split test \
+  --cache-dir artifacts/gardens-point
+```
+
+The extractor converts images to RGB, resizes to a fixed 384×512 with antialiased bilinear interpolation, and applies ImageNet channel statistics. A fixed resize supports batches and may change the source aspect ratio. The default is eight images per batch. Set `--height`, `--width`, `--batch-size`, `--workers`, and `--device` to control extraction. Use the same preprocessing for all splits in an experiment.
+
+Each split writes one `artifacts/gardens-point/<split>.npz` archive. It holds `gallery_descriptors` and `query_descriptors` as L2-normalized `float32` matrices, with matching `<role>_ids` and `<role>_paths` arrays. A JSON `metadata` field records the schema version, split, checkpoint hash, descriptor dimension, preprocessing, and software versions. Both roles are published together after extraction succeeds. The archive contains image rows and descriptors only. Read it with `vpr_baseline.cache.load_cache(path)` or `numpy.load(path, allow_pickle=False)`. Evaluate with the archive and the CSVs available locally. Re-extract if the images or preprocessing change.
+
+Retrieval normalizes both matrices and computes their dot products in query batches. Descending scores determine the ranks, with ties resolved in gallery-manifest order. Recall@K is the fraction of all queries with at least one labeled positive in the first `min(K, gallery size)` results. Scores are fractions in `[0, 1]`.
+
+## Tests
+
+Run the unit suite and the offline CLI smoke test on generated images and synthetic labels. The real-weight test runs when `COSPLACE_CHECKPOINT` is set.
+
+```bash
+python -m unittest discover -s tests -v
+COSPLACE_CHECKPOINT=checkpoints/resnet18_512_cosplace.pth \
+  python -m unittest discover -s tests -v -k official_checkpoint
+```
+
+The real-weight smoke test checks strict loading, 512-element `float32` descriptors, unit norms, and cache-based retrieval with a known match. Its score tests the pipeline on synthetic images.
