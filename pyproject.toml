@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "quantum-vpr-adapters"
+version = "0.1.0"
+description = "Frozen CosPlace baseline for visual place recognition"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "torch==2.11.0",
+    "torchvision==0.26.0",
+    "numpy==2.4.4",
+    "Pillow==12.2.0",
+]
+
+[project.scripts]
+vpr-baseline = "vpr_baseline.cli:main"
+
+[tool.setuptools]
+license-files = ["LICENSES/CosPlace.txt"]
+
+[tool.setuptools.packages.find]
+where = ["src"]

@@ -221,3 +221,8 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Local VPR assets and outputs
+/data/
+/checkpoints/
+/artifacts/
