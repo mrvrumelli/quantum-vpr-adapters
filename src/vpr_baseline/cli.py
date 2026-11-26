@@ -110,7 +110,7 @@ def _train_adapter(args: argparse.Namespace) -> dict:
     val = load_split_cache(args.cache_dir, "val", manifests["val"])
     train_positives = load_training_positives(args.dataset_root, train.gallery.images, train.query.images)
     val_positives = load_positives(args.dataset_root, "val", val.gallery.images, val.query.images)
-    adapter = AdapterConfig(args.adapter, args.down_dim, args.hidden_dim, args.alpha)
+    adapter = AdapterConfig(args.adapter, args.down_dim, args.hidden_dim, args.alpha, up_bias=args.up_bias)
     config = TrainConfig(
         epochs=args.epochs, learning_rate=args.learning_rate, margin=args.margin, batch_size=args.batch_size,
         negative_window=args.negative_window, patience=args.patience, seed=args.seed,
@@ -156,6 +156,8 @@ def main(argv: list[str] | None = None) -> int:
     train.add_argument("--down-dim", type=int, default=AdapterConfig.down_dim)
     train.add_argument("--hidden-dim", type=int, default=AdapterConfig.hidden_dim)
     train.add_argument("--alpha", type=float, default=AdapterConfig.alpha, help="fixed residual scale")
+    train.add_argument("--no-up-bias", dest="up_bias", action="store_false",
+                       help="omit the Direct adapter's final projection bias")
     train.add_argument("--epochs", type=int, default=TrainConfig.epochs)
     train.add_argument("--learning-rate", type=float, default=TrainConfig.learning_rate)
     train.add_argument("--margin", type=float, default=TrainConfig.margin)

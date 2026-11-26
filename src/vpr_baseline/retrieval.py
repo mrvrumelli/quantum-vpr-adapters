@@ -6,12 +6,18 @@ from torch import Tensor
 RECALL_KS = (1, 5, 10)
 
 
+class ZeroDescriptorError(ValueError):
+    """A zero descriptor has no direction for cosine retrieval."""
+
+
 def l2_normalize(descriptors: Tensor) -> Tensor:
     if descriptors.ndim != 2 or min(descriptors.shape) == 0 or not descriptors.is_floating_point():
         raise ValueError("expected a non-empty floating-point descriptor matrix (N, D)")
     norms = torch.linalg.vector_norm(descriptors, dim=1, keepdim=True)
-    if not torch.isfinite(norms).all() or (norms == 0).any():
+    if not torch.isfinite(norms).all():
         raise ValueError("descriptors must have finite, nonzero L2 norms")
+    if (norms == 0).any():
+        raise ZeroDescriptorError("descriptors must have finite, nonzero L2 norms")
     return descriptors / norms
 
 

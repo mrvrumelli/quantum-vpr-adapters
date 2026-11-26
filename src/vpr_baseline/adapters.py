@@ -25,6 +25,7 @@ class AdapterConfig:
     down_dim: int = 8
     hidden_dim: int = 4
     alpha: float = 0.1
+    up_bias: bool = True
 
     def __post_init__(self) -> None:
         if self.kind not in ADAPTER_KINDS:
@@ -33,6 +34,8 @@ class AdapterConfig:
             raise ValueError("adapter widths must be positive integers")
         if not math.isfinite(self.alpha) or self.alpha < 0:
             raise ValueError("alpha must be finite and nonnegative")
+        if type(self.up_bias) is not bool or (self.kind == "residual" and not self.up_bias):
+            raise ValueError("up_bias must be boolean and may only be disabled for the Direct adapter")
 
 
 class MLPAdapter(nn.Module):
@@ -41,7 +44,7 @@ class MLPAdapter(nn.Module):
         self.config = config
         self.down = nn.Linear(DESCRIPTOR_DIM, config.down_dim)
         self.mlp = nn.Sequential(nn.Linear(config.down_dim, config.hidden_dim), nn.ReLU())
-        self.up = nn.Linear(config.hidden_dim, DESCRIPTOR_DIM)
+        self.up = nn.Linear(config.hidden_dim, DESCRIPTOR_DIM, bias=config.up_bias)
 
     def forward(self, descriptors: Tensor) -> Tensor:
         if descriptors.ndim != 2 or descriptors.shape[1] != DESCRIPTOR_DIM:

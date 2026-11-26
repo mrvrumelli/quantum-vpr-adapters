@@ -3,7 +3,7 @@ import unittest
 import torch
 
 from vpr_baseline.adapters import AdapterConfig, MLPAdapter
-from vpr_baseline.retrieval import l2_normalize
+from vpr_baseline.retrieval import ZeroDescriptorError, l2_normalize
 
 
 class AdapterTests(unittest.TestCase):
@@ -33,6 +33,27 @@ class AdapterTests(unittest.TestCase):
         torch.testing.assert_close(residual(self.z), self.z)
         with self.assertRaisesRegex(ValueError, r"\(batch, 512\)"):
             residual(self.z[:, :-1])
+
+    def test_direct_without_up_bias_keeps_the_same_seeded_weights(self):
+        with torch.random.fork_rng(devices=[]):
+            torch.random.default_generator.manual_seed(42)
+            control = MLPAdapter(AdapterConfig("direct"))
+            torch.random.default_generator.manual_seed(42)
+            model = MLPAdapter(AdapterConfig("direct", up_bias=False))
+        self.assertIsNone(model.up.bias)
+        for name, weights in model.state_dict().items():
+            torch.testing.assert_close(weights, control.state_dict()[name], rtol=0, atol=0)
+        with torch.no_grad():
+            model.mlp[0].bias.fill_(1)
+        torch.testing.assert_close(model(self.z).norm(dim=1), torch.ones(3))
+
+    def test_bias_free_direct_rejects_zero_norm_output(self):
+        model = MLPAdapter(AdapterConfig("direct", up_bias=False))
+        with torch.no_grad():
+            model.mlp[0].weight.zero_()
+            model.mlp[0].bias.fill_(-1)
+        with self.assertRaises(ZeroDescriptorError):
+            model(self.z)
 
     def test_gradients_reach_each_trainable_layer(self):
         for kind in ("direct", "residual"):
