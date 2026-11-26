@@ -13,6 +13,8 @@ from .model import DESCRIPTOR_DIM
 from .retrieval import evaluate_recall, l2_normalize
 
 ADAPTER_KINDS = ("direct", "residual")
+BOTTLENECK_ACTIVATIONS = ("relu", "leaky_relu")
+LEAKY_RELU_SLOPE = 0.01
 CHECKPOINT_VERSION = 1
 FEATURE_FIELDS = (
     "descriptor_dim", "checkpoint_sha256", "image_size_hw", "resize", "rgb_mean", "rgb_std", "l2_normalized"
@@ -26,6 +28,7 @@ class AdapterConfig:
     hidden_dim: int = 4
     alpha: float = 0.1
     up_bias: bool = True
+    activation: str = "relu"
 
     def __post_init__(self) -> None:
         if self.kind not in ADAPTER_KINDS:
@@ -36,6 +39,10 @@ class AdapterConfig:
             raise ValueError("alpha must be finite and nonnegative")
         if type(self.up_bias) is not bool or (self.kind == "residual" and not self.up_bias):
             raise ValueError("up_bias must be boolean and may only be disabled for the Direct adapter")
+        if self.activation not in BOTTLENECK_ACTIVATIONS:
+            raise ValueError(f"unknown bottleneck activation: {self.activation}")
+        if self.kind == "residual" and self.activation != "relu":
+            raise ValueError("LeakyReLU is available only for the Direct adapter")
 
 
 class MLPAdapter(nn.Module):
@@ -43,7 +50,8 @@ class MLPAdapter(nn.Module):
         super().__init__()
         self.config = config
         self.down = nn.Linear(DESCRIPTOR_DIM, config.down_dim)
-        self.mlp = nn.Sequential(nn.Linear(config.down_dim, config.hidden_dim), nn.ReLU())
+        activation = nn.LeakyReLU(LEAKY_RELU_SLOPE) if config.activation == "leaky_relu" else nn.ReLU()
+        self.mlp = nn.Sequential(nn.Linear(config.down_dim, config.hidden_dim), activation)
         self.up = nn.Linear(config.hidden_dim, DESCRIPTOR_DIM, bias=config.up_bias)
 
     def forward(self, descriptors: Tensor) -> Tensor:

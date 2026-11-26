@@ -55,6 +55,37 @@ class AdapterTests(unittest.TestCase):
         with self.assertRaises(ZeroDescriptorError):
             model(self.z)
 
+    def test_leaky_relu_keeps_negative_activations_and_shared_weights(self):
+        with torch.random.fork_rng(devices=[]):
+            torch.random.default_generator.manual_seed(42)
+            relu = MLPAdapter(AdapterConfig("direct", up_bias=False))
+            torch.random.default_generator.manual_seed(42)
+            leaky = MLPAdapter(AdapterConfig("direct", up_bias=False, activation="leaky_relu"))
+        for name, weights in relu.state_dict().items():
+            torch.testing.assert_close(leaky.state_dict()[name], weights, rtol=0, atol=0)
+        with torch.no_grad():
+            leaky.mlp[0].weight.zero_()
+            leaky.mlp[0].bias.fill_(-1)
+        hidden = leaky.mlp(leaky.down(self.z))
+        torch.testing.assert_close(hidden, torch.full((3, 4), -0.01))
+        hidden.sum().backward()
+        torch.testing.assert_close(leaky.mlp[0].bias.grad, torch.full((4,), 0.03))
+        torch.testing.assert_close(leaky(self.z).norm(dim=1), torch.ones(3))
+
+    def test_leaky_relu_still_reports_an_exact_zero_output(self):
+        model = MLPAdapter(AdapterConfig("direct", up_bias=False, activation="leaky_relu"))
+        with torch.no_grad():
+            model.mlp[0].weight.zero_()
+            model.mlp[0].bias.fill_(-1)
+            model.up.weight.zero_()
+        with self.assertRaises(ZeroDescriptorError) as failure:
+            model(self.z)
+        self.assertEqual((failure.exception.zero_rows, failure.exception.batch_rows), (3, 3))
+
+    def test_residual_keeps_the_relu_architecture(self):
+        with self.assertRaisesRegex(ValueError, "only for the Direct adapter"):
+            AdapterConfig("residual", activation="leaky_relu")
+
     def test_gradients_reach_each_trainable_layer(self):
         for kind in ("direct", "residual"):
             with self.subTest(kind=kind), torch.random.fork_rng(devices=[]):

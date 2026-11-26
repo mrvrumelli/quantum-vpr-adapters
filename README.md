@@ -131,6 +131,7 @@ done
 | `--down-dim`, `--hidden-dim` | `8`, `4` |
 | `--alpha` | `0.1` for Residual |
 | `--no-up-bias` | Optional for Direct. The final projection uses a bias by default. |
+| `--activation` | `relu` by default. Direct also supports `leaky_relu` with slope `0.01`. |
 | `--epochs`, `--patience` | `50`, `10` |
 | `--learning-rate`, `--batch-size` | `0.001`, `16` with Adam |
 | `--margin`, `--negative-window` | `0.2`, `5` frames |

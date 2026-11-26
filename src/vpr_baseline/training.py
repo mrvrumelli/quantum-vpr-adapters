@@ -13,7 +13,7 @@ from torch import Tensor
 from .adapters import CHECKPOINT_VERSION, AdapterConfig, MLPAdapter, feature_spec
 from .cache import SplitCache
 from .data import ImageRecord
-from .retrieval import RECALL_KS, evaluate_recall
+from .retrieval import RECALL_KS, ZeroDescriptorError, evaluate_recall
 
 
 @dataclass(frozen=True)
@@ -142,14 +142,22 @@ def train_adapter(
         for batch in triplets.split(config.batch_size):
             q, p, n = batch.unbind(dim=1)
             optimizer.zero_grad(set_to_none=True)
-            queries = model(train_queries[q])
-            positive, negative = model(train_gallery[torch.cat((p, n))]).chunk(2)
+            try:
+                queries = model(train_queries[q])
+                positive, negative = model(train_gallery[torch.cat((p, n))]).chunk(2)
+            except ZeroDescriptorError as error:
+                error.epoch, error.split = epoch, "train"
+                raise
             loss = _hinge((queries * positive).sum(dim=1), (queries * negative).sum(dim=1), config.margin)
             loss.backward()
             optimizer.step()
             total_loss += loss.item() * len(batch)
 
-        val_loss, val_recall = _validate(model, val, val_positives, val_triplets, config.margin)
+        try:
+            val_loss, val_recall = _validate(model, val, val_positives, val_triplets, config.margin)
+        except ZeroDescriptorError as error:
+            error.epoch, error.split = epoch, "val"
+            raise
         history.append({
             "epoch": epoch, "train_loss": total_loss / len(triplets),
             "val_loss": val_loss, "val_recall": val_recall,
