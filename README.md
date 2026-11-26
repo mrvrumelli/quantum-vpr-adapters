@@ -167,6 +167,10 @@ vpr-baseline compare-adapters --dataset-root data/GardensPointWalking \
 
 Gardens Point provides 80 training pairs and two 50-query evaluation splits from one campus route. A single query changes Recall@K by two percentage points. The temporal window reduces ambiguity from adjacent frames, and distant frames can still depict visually similar places. Treat single-seed measurements on this protocol as preliminary.
 
+### Adapter diagnostics and bottleneck ablation
+
+The [Task 02.1 experiment report](experiments/classical-bottleneck/README.md) includes train and validation diagnostics, a controlled three-seed bottleneck sweep, CSV results, figures, and reproduction commands.
+
 ## Tests
 
 Run the unit suite and offline CLI smoke tests on generated images, synthetic descriptors, and synthetic labels. The optional Phase 1 real-weight test runs when `COSPLACE_CHECKPOINT` is set.

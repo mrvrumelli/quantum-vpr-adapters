@@ -15,6 +15,9 @@ dependencies = [
     "Pillow==12.2.0",
 ]
 
+[project.optional-dependencies]
+diagnostics = ["matplotlib==3.10.8"]
+
 [project.scripts]
 vpr-baseline = "vpr_baseline.cli:main"
 
