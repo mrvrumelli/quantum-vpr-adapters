@@ -173,6 +173,20 @@ Gardens Point provides 80 training pairs and two 50-query evaluation splits from
 
 The [Task 02.1 experiment report](experiments/classical-bottleneck/README.md) includes train and validation diagnostics, a controlled three-seed bottleneck sweep, CSV results, figures, and reproduction commands.
 
+### Final classical benchmark
+
+The [Task 02.3 report](experiments/classical-bottleneck/final-benchmark/README.md) consolidates all archived classical checkpoints, full-gallery MRR, paired ranks, and the Phase 3 baseline settings. Recreate the tables and figures from the existing cached features and checkpoints.
+
+```bash
+python -m pip install -e '.[diagnostics]'
+OMP_NUM_THREADS=1 python experiments/classical-bottleneck/run_final_benchmark.py \
+  --dataset-root data/GardensPointWalking --artifacts-dir artifacts \
+  --output-dir artifacts/final-classical-evaluation
+python experiments/classical-bottleneck/plot_final_benchmark.py artifacts/final-classical-evaluation
+```
+
+Add `--mrr` to `vpr-baseline evaluate` or `compare-adapters` to report full-gallery MRR alongside Recall@K.
+
 ## Tests
 
 Run the unit suite and offline CLI smoke tests on generated images, synthetic descriptors, and synthetic labels. The optional Phase 1 real-weight test runs when `COSPLACE_CHECKPOINT` is set.

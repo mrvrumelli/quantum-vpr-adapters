@@ -2,7 +2,7 @@ import unittest
 
 import torch
 
-from vpr_baseline.retrieval import l2_normalize, rank_cosine, recall_at_k
+from vpr_baseline.retrieval import evaluate_retrieval, l2_normalize, mean_reciprocal_rank, rank_cosine, recall_at_k
 
 
 class RetrievalTests(unittest.TestCase):
@@ -28,3 +28,19 @@ class RetrievalTests(unittest.TestCase):
 
     def test_recall_with_small_gallery(self):
         self.assertEqual(recall_at_k(torch.tensor([[0, 1]]), [{1}]), {1: 0.0, 5: 1.0, 10: 1.0})
+
+    def test_mrr_uses_the_first_of_multiple_positives(self):
+        ranking = torch.tensor([[3, 0, 1, 2], [3, 2, 0, 1], [0, 2, 1, 3]])
+        positives = [{2, 3}, {0, 1}, {2, 3}]
+        self.assertAlmostEqual(mean_reciprocal_rank(ranking, positives), (1 + 1 / 3 + 1 / 2) / 3)
+
+    def test_evaluation_includes_positives_beyond_rank_ten(self):
+        query = torch.tensor([[1.0, 0]])
+        gallery = query.repeat(12, 1)
+        self.assertEqual(evaluate_retrieval(query, gallery, [{11}]), {
+            "Recall@1": 0.0, "Recall@5": 0.0, "Recall@10": 0.0, "MRR": 1 / 12,
+        })
+
+    def test_mrr_detects_a_missing_positive(self):
+        with self.assertRaisesRegex(ValueError, "positive in the full gallery ranking"):
+            mean_reciprocal_rank(torch.tensor([[0, 1]]), [{2}])

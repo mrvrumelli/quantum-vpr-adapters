@@ -10,7 +10,7 @@ from torch import Tensor, nn
 
 from .cache import SplitCache
 from .model import DESCRIPTOR_DIM
-from .retrieval import evaluate_recall, l2_normalize
+from .retrieval import evaluate_recall, evaluate_retrieval, l2_normalize
 
 ADAPTER_KINDS = ("direct", "residual")
 BOTTLENECK_ACTIVATIONS = ("relu", "leaky_relu")
@@ -89,8 +89,10 @@ def load_adapter(path: Path, cache: SplitCache) -> tuple[MLPAdapter, int]:
 
 @torch.inference_mode()
 def evaluate_adapter(
-    model: MLPAdapter, cache: SplitCache, positives: list[set[int]], query_batch_size: int = 256
+    model: MLPAdapter, cache: SplitCache, positives: list[set[int]], query_batch_size: int = 256,
+    *, include_mrr: bool = False,
 ) -> dict[str, float]:
-    return evaluate_recall(
+    evaluate = evaluate_retrieval if include_mrr else evaluate_recall
+    return evaluate(
         model(cache.query.descriptors), model(cache.gallery.descriptors), positives, query_batch_size
     )

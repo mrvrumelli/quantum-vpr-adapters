@@ -1,0 +1,10 @@
+scope,model,intermediate_dim,bottleneck_dim,seed,query_count,rank_improved,rank_worsened,rank_unchanged,mean_change_reciprocal_rank,recall_at_1_gains,recall_at_1_losses,recall_at_5_gains,recall_at_5_losses
+primary,A,64,4,42,50,7,41,2,-0.35396796748646153,5,15,1,34
+primary,A,64,4,123,50,7,41,2,-0.32972214862432253,4,13,2,33
+primary,A,64,4,2026,50,7,41,2,-0.33794981011151054,4,13,0,31
+primary,C,64,4,42,50,7,41,2,-0.3396128243500012,4,15,1,31
+primary,C,64,4,123,50,4,40,6,-0.36083789061248495,2,12,0,33
+primary,C,64,4,2026,50,6,42,2,-0.3840542872669259,4,15,1,37
+primary,D,64,4,42,50,5,6,39,0.016137733725969022,2,0,0,3
+primary,D,64,4,123,50,6,8,36,-0.005759202670967377,0,1,0,1
+primary,D,64,4,2026,50,7,10,33,0.0279663203141464,4,0,0,2
