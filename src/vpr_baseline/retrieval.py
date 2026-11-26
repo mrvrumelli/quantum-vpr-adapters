@@ -1,5 +1,7 @@
 """Exact cosine ranking and closed-set VPR metrics."""
 
+from collections.abc import Collection, Sequence
+
 import torch
 from torch import Tensor
 
@@ -62,8 +64,35 @@ def recall_at_k(
     return {k: sum(rank <= k for rank in first_hits) / len(first_hits) for k in ks}
 
 
+def first_positive_ranks(ranking: Tensor, positives: Sequence[Collection[int]]) -> Tensor:
+    """Return the one-based rank of each query's highest-ranked labeled positive."""
+    if ranking.ndim != 2 or min(ranking.shape) == 0 or ranking.shape[0] != len(positives):
+        raise ValueError("ranking and labels must describe the same nonempty set of queries")
+    ranks = []
+    for order, matches in zip(ranking.tolist(), positives, strict=True):
+        rank = next((place for place, index in enumerate(order, start=1) if index in matches), None)
+        if rank is None:
+            raise ValueError("each query needs a positive in the full gallery ranking")
+        ranks.append(rank)
+    return torch.tensor(ranks, dtype=torch.long)
+
+
+def mean_reciprocal_rank(ranking: Tensor, positives: Sequence[Collection[int]]) -> float:
+    """Average reciprocal first-positive rank over the full gallery ranking."""
+    return first_positive_ranks(ranking, positives).double().reciprocal().mean().item()
+
+
 def evaluate_recall(
     queries: Tensor, gallery: Tensor, positives: list[set[int]], query_batch_size: int = 256
 ) -> dict[str, float]:
     rankings = rank_cosine(queries, gallery, max(RECALL_KS), query_batch_size)
     return {f"Recall@{k}": value for k, value in recall_at_k(rankings, positives).items()}
+
+
+def evaluate_retrieval(
+    queries: Tensor, gallery: Tensor, positives: list[set[int]], query_batch_size: int = 256
+) -> dict[str, float]:
+    """Evaluate Recall@K and MRR from one complete cosine ranking."""
+    ranking = rank_cosine(queries, gallery, len(gallery), query_batch_size)
+    return {**{f"Recall@{k}": value for k, value in recall_at_k(ranking, positives).items()},
+            "MRR": mean_reciprocal_rank(ranking, positives)}

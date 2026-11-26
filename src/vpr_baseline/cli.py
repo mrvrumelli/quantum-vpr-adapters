@@ -16,7 +16,7 @@ from .data import EVAL_SPLITS, SPLITS, load_manifests, load_positives, load_trai
 from .extract import DEFAULT_IMAGE_SIZE, IMAGE_MEAN, IMAGE_STD, extract_descriptors
 from .gardens import prepare_gardens_point
 from .model import CHECKPOINT_SHA256, CHECKPOINT_URL, DESCRIPTOR_DIM, load_cosplace
-from .retrieval import evaluate_recall
+from .retrieval import evaluate_recall, evaluate_retrieval
 from .training import TrainConfig, train_adapter
 
 
@@ -78,19 +78,19 @@ def _evaluate(args: argparse.Namespace) -> dict:
     cache, positives = _load_evaluation(args)
     result = _split_summary(cache)
     if args.adapter_checkpoint is None:
-        return {**result, **evaluate_recall(
-            cache.query.descriptors, cache.gallery.descriptors, positives, args.query_batch_size
-        )}
+        evaluate = evaluate_retrieval if args.mrr else evaluate_recall
+        return {**result, **evaluate(cache.query.descriptors, cache.gallery.descriptors, positives, args.query_batch_size)}
     model, epoch = load_adapter(args.adapter_checkpoint, cache)
     return {
         **result, "adapter": model.config.kind, "checkpoint": str(args.adapter_checkpoint), "epoch": epoch,
-        **evaluate_adapter(model, cache, positives, args.query_batch_size),
+        **evaluate_adapter(model, cache, positives, args.query_batch_size, include_mrr=args.mrr),
     }
 
 
 def _compare_adapters(args: argparse.Namespace) -> dict:
     cache, positives = _load_evaluation(args)
-    scores = {"cosplace": evaluate_recall(
+    evaluate = evaluate_retrieval if args.mrr else evaluate_recall
+    scores = {"cosplace": evaluate(
         cache.query.descriptors, cache.gallery.descriptors, positives, args.query_batch_size
     )}
     for kind, path in (("direct", args.direct_checkpoint), ("residual", args.residual_checkpoint)):
@@ -99,7 +99,7 @@ def _compare_adapters(args: argparse.Namespace) -> dict:
             raise ValueError(f"{path}: expected a {kind} adapter, got {model.config.kind}")
         scores[kind] = {
             "checkpoint": str(path), "epoch": epoch,
-            **evaluate_adapter(model, cache, positives, args.query_batch_size),
+            **evaluate_adapter(model, cache, positives, args.query_batch_size, include_mrr=args.mrr),
         }
     return {**_split_summary(cache), "models": scores}
 
@@ -141,6 +141,7 @@ def main(argv: list[str] | None = None) -> int:
     for command in (evaluate, compare):
         command.add_argument("--split", choices=EVAL_SPLITS, required=True)
         command.add_argument("--query-batch-size", type=int, default=256)
+        command.add_argument("--mrr", action="store_true", help="also report MRR over the complete gallery")
         command.add_argument("--output", type=Path, help="also save the results to this JSON file")
 
     extract.add_argument("--checkpoint", type=Path, required=True)

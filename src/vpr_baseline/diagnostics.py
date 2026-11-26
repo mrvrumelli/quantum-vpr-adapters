@@ -6,6 +6,7 @@ from dataclasses import dataclass
 import torch
 from torch import Tensor
 
+from .retrieval import first_positive_ranks as first_positive_ranks
 from .retrieval import l2_normalize
 
 RANK_RTOL = 1e-5
@@ -62,19 +63,6 @@ def pair_similarities(
         matched.append(scores[i, sorted(positive)])
         unmatched.append(scores[i, sorted(negative)])
     return torch.cat(matched), torch.cat(unmatched)
-
-
-def first_positive_ranks(ranking: Tensor, positives: Sequence[Collection[int]]) -> Tensor:
-    """Return the one-based rank of each query's highest-ranked labeled positive."""
-    if ranking.ndim != 2 or ranking.shape[0] != len(positives):
-        raise ValueError("ranking and labels must describe the same queries")
-    ranks = []
-    for order, matches in zip(ranking.tolist(), positives, strict=True):
-        rank = next((place for place, index in enumerate(order, start=1) if index in matches), None)
-        if rank is None:
-            raise ValueError("each query needs a positive in the full gallery ranking")
-        ranks.append(rank)
-    return torch.tensor(ranks, dtype=torch.long)
 
 
 def rank_changes(original: Tensor, adapted: Tensor) -> dict[str, int]:

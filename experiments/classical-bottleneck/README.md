@@ -94,4 +94,5 @@ python -m vpr_baseline.adapter_plots artifacts/classical-bottleneck
 - [Exact 24-run export and optimization audit](numerical-results.md) includes the fixed-intermediate sweep's train and validation results, residual diagnostics, and gradient probes.
 - [Direct up-projection bias ablation](direct-bias-results.md) compares matched bias-on and bias-off runs, with a per-seed CSV and zero-descriptor failure counts.
 - [Direct LeakyReLU ablation](leaky-relu/README.md) adds the bias-free LeakyReLU arm and compares it with the archived ReLU runs.
+- [Final classical benchmark](final-benchmark/README.md) includes all saved runs, full-gallery MRR, paired ranks, and the Phase 3 baseline settings.
 - The local run directory contains `pair_scores.csv`, all checkpoints and epoch histories, and the regenerated figures.
