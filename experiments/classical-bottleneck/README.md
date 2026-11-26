@@ -91,4 +91,5 @@ python -m vpr_baseline.adapter_plots artifacts/classical-bottleneck
 - [Per-run diagnostics](diagnostics.csv) includes training and validation rows, pairwise mean and SD, variance and rank, pair distribution summaries, and residual rank changes.
 - [Validation seed summary](seed_summary.csv) has mean and sample SD for Recall@K and collapse indicators by layout and adapter.
 - [Singular values](singular_values.csv) records the full pooled train and validation spectra of original CosPlace and the two Phase 2 checkpoints.
+- [Exact 24-run export and optimization audit](numerical-results.md) includes the fixed-intermediate sweep's train and validation results, residual diagnostics, and gradient probes.
 - The local run directory contains `pair_scores.csv`, all checkpoints and epoch histories, and the regenerated figures.
