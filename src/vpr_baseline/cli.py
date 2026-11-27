@@ -10,7 +10,7 @@ import torch
 import torchvision
 from PIL import __version__ as pillow_version
 
-from .adapters import ADAPTER_KINDS, BOTTLENECK_ACTIVATIONS, AdapterConfig, evaluate_adapter, load_adapter
+from .adapters import ADAPTER_KINDS, ADAPTER_TRANSFORMS, BOTTLENECK_ACTIVATIONS, AdapterConfig, evaluate_adapter, load_adapter
 from .cache import DescriptorSet, SplitCache, load_split_cache, save_cache
 from .data import EVAL_SPLITS, SPLITS, load_manifests, load_positives, load_training_positives
 from .extract import DEFAULT_IMAGE_SIZE, IMAGE_MEAN, IMAGE_STD, extract_descriptors
@@ -111,7 +111,8 @@ def _train_adapter(args: argparse.Namespace) -> dict:
     train_positives = load_training_positives(args.dataset_root, train.gallery.images, train.query.images)
     val_positives = load_positives(args.dataset_root, "val", val.gallery.images, val.query.images)
     adapter = AdapterConfig(
-        args.adapter, args.down_dim, args.hidden_dim, args.alpha, up_bias=args.up_bias, activation=args.activation
+        args.adapter, args.down_dim, args.hidden_dim, args.alpha, up_bias=args.up_bias, activation=args.activation,
+        transform=args.transform, circuit_depth=args.circuit_depth, entangle=args.entangle, train_quantum=args.train_quantum,
     )
     config = TrainConfig(
         epochs=args.epochs, learning_rate=args.learning_rate, margin=args.margin, batch_size=args.batch_size,
@@ -160,9 +161,13 @@ def main(argv: list[str] | None = None) -> int:
     train.add_argument("--hidden-dim", type=int, default=AdapterConfig.hidden_dim)
     train.add_argument("--alpha", type=float, default=AdapterConfig.alpha, help="fixed residual scale")
     train.add_argument("--no-up-bias", dest="up_bias", action="store_false",
-                       help="omit the Direct adapter's final projection bias")
+                       help="disable the final projection bias for Direct adapters and the new bottleneck transforms")
     train.add_argument("--activation", choices=BOTTLENECK_ACTIVATIONS, default=AdapterConfig.activation,
-                       help="bottleneck activation (Direct LeakyReLU slope: 0.01)")
+                       help="bottleneck activation (LeakyReLU slope is 0.01)")
+    train.add_argument("--transform", choices=ADAPTER_TRANSFORMS, default=AdapterConfig.transform)
+    train.add_argument("--circuit-depth", type=int, default=AdapterConfig.circuit_depth)
+    train.add_argument("--no-entanglement", dest="entangle", action="store_false")
+    train.add_argument("--freeze-quantum", dest="train_quantum", action="store_false")
     train.add_argument("--epochs", type=int, default=TrainConfig.epochs)
     train.add_argument("--learning-rate", type=float, default=TrainConfig.learning_rate)
     train.add_argument("--margin", type=float, default=TrainConfig.margin)

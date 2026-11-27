@@ -6,6 +6,7 @@ import re
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from time import perf_counter
 
 import torch
 from torch import Tensor
@@ -13,6 +14,7 @@ from torch import Tensor
 from .adapters import CHECKPOINT_VERSION, AdapterConfig, MLPAdapter, feature_spec
 from .cache import SplitCache
 from .data import ImageRecord
+from .mixer_monitor import MixerMonitor
 from .retrieval import RECALL_KS, ZeroDescriptorError, evaluate_recall
 
 
@@ -127,8 +129,9 @@ def train_adapter(
     with torch.random.fork_rng(devices=[]):
         torch.random.default_generator.manual_seed(config.seed)
         model = MLPAdapter(adapter)
+    monitor = MixerMonitor(model) if model.mixer is not None else None
     rng = torch.Generator().manual_seed(config.seed)
-    optimizer = torch.optim.Adam(model.parameters(), lr=config.learning_rate)
+    optimizer = torch.optim.Adam((p for p in model.parameters() if p.requires_grad), lr=config.learning_rate)
     train_queries = train.query.descriptors.detach()
     train_gallery = train.gallery.descriptors.detach()
     history = []
@@ -136,6 +139,8 @@ def train_adapter(
     best_epoch = 0
     best_state = {}
     for epoch in range(1, config.epochs + 1):
+        if monitor is not None:
+            started = perf_counter()
         model.train()
         total_loss = 0.0
         triplets = train_pool.sample(rng)
@@ -150,6 +155,8 @@ def train_adapter(
                 raise
             loss = _hinge((queries * positive).sum(dim=1), (queries * negative).sum(dim=1), config.margin)
             loss.backward()
+            if monitor is not None:
+                monitor.observe()
             optimizer.step()
             total_loss += loss.item() * len(batch)
 
@@ -158,10 +165,13 @@ def train_adapter(
         except ZeroDescriptorError as error:
             error.epoch, error.split = epoch, "val"
             raise
-        history.append({
+        entry = {
             "epoch": epoch, "train_loss": total_loss / len(triplets),
             "val_loss": val_loss, "val_recall": val_recall,
-        })
+        }
+        if monitor is not None:
+            entry["mixer_diagnostics"] = monitor.finish_epoch(perf_counter() - started)
+        history.append(entry)
         score = tuple(val_recall[f"Recall@{k}"] for k in RECALL_KS)
         if score > best_score:
             best_score = score

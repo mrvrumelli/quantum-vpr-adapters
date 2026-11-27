@@ -187,6 +187,10 @@ python experiments/classical-bottleneck/plot_final_benchmark.py artifacts/final-
 
 Add `--mrr` to `vpr-baseline evaluate` or `compare-adapters` to report full-gallery MRR alongside Recall@K.
 
+### Stage 3.1 quantum adapters
+
+The [Stage 3.1 report](experiments/quantum-stage-3-1/README.md) documents the differentiable four-qubit circuit, the matched classical surrogate, the controlled train and validation comparison, and commands to reproduce each stage.
+
 ## Tests
 
 Run the unit suite and offline CLI smoke tests on generated images, synthetic descriptors, and synthetic labels. The optional Phase 1 real-weight test runs when `COSPLACE_CHECKPOINT` is set.
