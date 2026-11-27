@@ -15,7 +15,7 @@ from .retrieval import evaluate_recall, evaluate_retrieval, l2_normalize
 
 ADAPTER_KINDS = ("direct", "residual")
 BOTTLENECK_ACTIVATIONS = ("relu", "leaky_relu")
-ADAPTER_TRANSFORMS = ("mlp", "quantum", "surrogate")
+ADAPTER_TRANSFORMS = ("mlp", "quantum", "surrogate", "identity")
 LEAKY_RELU_SLOPE = 0.01
 RESIDUAL_UP_INIT_SCALE = 0.05
 CHECKPOINT_VERSION = 1
@@ -49,7 +49,7 @@ class AdapterConfig:
         if self.transform not in ADAPTER_TRANSFORMS:
             raise ValueError(f"unknown bottleneck transform: {self.transform}")
         if self.transform != "mlp" and self.hidden_dim != QUBITS:
-            raise ValueError("the quantum and surrogate transforms require a four-dimensional bottleneck")
+            raise ValueError("mixer controls require a four-dimensional bottleneck")
         if type(self.circuit_depth) is not int or self.circuit_depth < 1:
             raise ValueError("circuit depth must be a positive integer")
         if type(self.entangle) is not bool or type(self.train_quantum) is not bool:
@@ -78,6 +78,8 @@ class MLPAdapter(nn.Module):
             self.mixer = QuantumMixer(config.circuit_depth, entangle=config.entangle, trainable=config.train_quantum)
         elif config.transform == "surrogate":
             self.mixer = ClassicalMixer()
+        elif config.transform == "identity":
+            self.mixer = nn.Identity()
         if self.mixer is not None and config.kind == "residual":
             with torch.no_grad():
                 self.up.weight.mul_(RESIDUAL_UP_INIT_SCALE)

@@ -1,0 +1,293 @@
+{
+  "seeds": [
+    42,
+    123,
+    2026,
+    7,
+    31415
+  ],
+  "training": {
+    "epochs": 50,
+    "learning_rate": 0.001,
+    "margin": 0.2,
+    "batch_size": 16,
+    "negative_window": 5,
+    "patience": 50,
+    "seed": 0
+  },
+  "models": {
+    "pqc_005": {
+      "kind": "residual",
+      "down_dim": 64,
+      "hidden_dim": 4,
+      "alpha": 0.05,
+      "up_bias": false,
+      "activation": "leaky_relu",
+      "transform": "quantum",
+      "circuit_depth": 2,
+      "entangle": true,
+      "train_quantum": true
+    },
+    "pqc_010": {
+      "kind": "residual",
+      "down_dim": 64,
+      "hidden_dim": 4,
+      "alpha": 0.1,
+      "up_bias": false,
+      "activation": "leaky_relu",
+      "transform": "quantum",
+      "circuit_depth": 2,
+      "entangle": true,
+      "train_quantum": true
+    },
+    "pqc_020": {
+      "kind": "residual",
+      "down_dim": 64,
+      "hidden_dim": 4,
+      "alpha": 0.2,
+      "up_bias": false,
+      "activation": "leaky_relu",
+      "transform": "quantum",
+      "circuit_depth": 2,
+      "entangle": true,
+      "train_quantum": true
+    },
+    "pqc_050": {
+      "kind": "residual",
+      "down_dim": 64,
+      "hidden_dim": 4,
+      "alpha": 0.5,
+      "up_bias": false,
+      "activation": "leaky_relu",
+      "transform": "quantum",
+      "circuit_depth": 2,
+      "entangle": true,
+      "train_quantum": true
+    },
+    "pqc_frozen_005": {
+      "kind": "residual",
+      "down_dim": 64,
+      "hidden_dim": 4,
+      "alpha": 0.05,
+      "up_bias": false,
+      "activation": "leaky_relu",
+      "transform": "quantum",
+      "circuit_depth": 2,
+      "entangle": true,
+      "train_quantum": false
+    },
+    "pqc_separable_005": {
+      "kind": "residual",
+      "down_dim": 64,
+      "hidden_dim": 4,
+      "alpha": 0.05,
+      "up_bias": false,
+      "activation": "leaky_relu",
+      "transform": "quantum",
+      "circuit_depth": 2,
+      "entangle": false,
+      "train_quantum": true
+    },
+    "classical_matched_005": {
+      "kind": "residual",
+      "down_dim": 64,
+      "hidden_dim": 4,
+      "alpha": 0.05,
+      "up_bias": false,
+      "activation": "leaky_relu",
+      "transform": "surrogate",
+      "circuit_depth": 2,
+      "entangle": true,
+      "train_quantum": true
+    },
+    "classical_identity_005": {
+      "kind": "residual",
+      "down_dim": 64,
+      "hidden_dim": 4,
+      "alpha": 0.05,
+      "up_bias": false,
+      "activation": "leaky_relu",
+      "transform": "identity",
+      "circuit_depth": 2,
+      "entangle": true,
+      "train_quantum": true
+    },
+    "pqc_frozen_010": {
+      "kind": "residual",
+      "down_dim": 64,
+      "hidden_dim": 4,
+      "alpha": 0.1,
+      "up_bias": false,
+      "activation": "leaky_relu",
+      "transform": "quantum",
+      "circuit_depth": 2,
+      "entangle": true,
+      "train_quantum": false
+    },
+    "pqc_separable_010": {
+      "kind": "residual",
+      "down_dim": 64,
+      "hidden_dim": 4,
+      "alpha": 0.1,
+      "up_bias": false,
+      "activation": "leaky_relu",
+      "transform": "quantum",
+      "circuit_depth": 2,
+      "entangle": false,
+      "train_quantum": true
+    },
+    "classical_matched_010": {
+      "kind": "residual",
+      "down_dim": 64,
+      "hidden_dim": 4,
+      "alpha": 0.1,
+      "up_bias": false,
+      "activation": "leaky_relu",
+      "transform": "surrogate",
+      "circuit_depth": 2,
+      "entangle": true,
+      "train_quantum": true
+    },
+    "classical_identity_010": {
+      "kind": "residual",
+      "down_dim": 64,
+      "hidden_dim": 4,
+      "alpha": 0.1,
+      "up_bias": false,
+      "activation": "leaky_relu",
+      "transform": "identity",
+      "circuit_depth": 2,
+      "entangle": true,
+      "train_quantum": true
+    },
+    "pqc_frozen_020": {
+      "kind": "residual",
+      "down_dim": 64,
+      "hidden_dim": 4,
+      "alpha": 0.2,
+      "up_bias": false,
+      "activation": "leaky_relu",
+      "transform": "quantum",
+      "circuit_depth": 2,
+      "entangle": true,
+      "train_quantum": false
+    },
+    "pqc_separable_020": {
+      "kind": "residual",
+      "down_dim": 64,
+      "hidden_dim": 4,
+      "alpha": 0.2,
+      "up_bias": false,
+      "activation": "leaky_relu",
+      "transform": "quantum",
+      "circuit_depth": 2,
+      "entangle": false,
+      "train_quantum": true
+    },
+    "classical_matched_020": {
+      "kind": "residual",
+      "down_dim": 64,
+      "hidden_dim": 4,
+      "alpha": 0.2,
+      "up_bias": false,
+      "activation": "leaky_relu",
+      "transform": "surrogate",
+      "circuit_depth": 2,
+      "entangle": true,
+      "train_quantum": true
+    },
+    "classical_identity_020": {
+      "kind": "residual",
+      "down_dim": 64,
+      "hidden_dim": 4,
+      "alpha": 0.2,
+      "up_bias": false,
+      "activation": "leaky_relu",
+      "transform": "identity",
+      "circuit_depth": 2,
+      "entangle": true,
+      "train_quantum": true
+    },
+    "pqc_frozen_050": {
+      "kind": "residual",
+      "down_dim": 64,
+      "hidden_dim": 4,
+      "alpha": 0.5,
+      "up_bias": false,
+      "activation": "leaky_relu",
+      "transform": "quantum",
+      "circuit_depth": 2,
+      "entangle": true,
+      "train_quantum": false
+    },
+    "pqc_separable_050": {
+      "kind": "residual",
+      "down_dim": 64,
+      "hidden_dim": 4,
+      "alpha": 0.5,
+      "up_bias": false,
+      "activation": "leaky_relu",
+      "transform": "quantum",
+      "circuit_depth": 2,
+      "entangle": false,
+      "train_quantum": true
+    },
+    "classical_matched_050": {
+      "kind": "residual",
+      "down_dim": 64,
+      "hidden_dim": 4,
+      "alpha": 0.5,
+      "up_bias": false,
+      "activation": "leaky_relu",
+      "transform": "surrogate",
+      "circuit_depth": 2,
+      "entangle": true,
+      "train_quantum": true
+    },
+    "classical_identity_050": {
+      "kind": "residual",
+      "down_dim": 64,
+      "hidden_dim": 4,
+      "alpha": 0.5,
+      "up_bias": false,
+      "activation": "leaky_relu",
+      "transform": "identity",
+      "circuit_depth": 2,
+      "entangle": true,
+      "train_quantum": true
+    }
+  },
+  "torch": "2.11.0",
+  "numpy": "2.4.4",
+  "torch_threads": 1,
+  "splits": [
+    "train",
+    "val"
+  ],
+  "feature_spec": {
+    "descriptor_dim": 512,
+    "checkpoint_sha256": "db09310a175e325fe25e7a460b41886ab9357b19c41d370a9ed3ed81bc9abf9f",
+    "image_size_hw": [
+      384,
+      512
+    ],
+    "resize": "bilinear_antialias",
+    "rgb_mean": [
+      0.485,
+      0.456,
+      0.406
+    ],
+    "rgb_std": [
+      0.229,
+      0.224,
+      0.225
+    ],
+    "l2_normalized": true
+  },
+  "bootstrap_draws": 20000,
+  "bootstrap_seed": 3202,
+  "bootstrap_block_lengths": [
+    5,
+    10
+  ]
+}

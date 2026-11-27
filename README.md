@@ -191,6 +191,10 @@ Add `--mrr` to `vpr-baseline evaluate` or `compare-adapters` to report full-gall
 
 The [Stage 3.1 report](experiments/quantum-stage-3-1/README.md) documents the differentiable four-qubit circuit, the matched classical surrogate, the controlled train and validation comparison, and commands to reproduce each stage.
 
+### Stage 3.2 residual contribution
+
+The [Stage 3.2 report](experiments/quantum-stage-3-2/README.md) compares trainable, frozen, and separable circuits with classical residual controls across the same four nonzero scales and five seeds. It includes paired route-block confidence intervals, query-level ranks, readout covariance, and reproduction commands.
+
 ## Tests
 
 Run the unit suite and offline CLI smoke tests on generated images, synthetic descriptors, and synthetic labels. The optional Phase 1 real-weight test runs when `COSPLACE_CHECKPOINT` is set.

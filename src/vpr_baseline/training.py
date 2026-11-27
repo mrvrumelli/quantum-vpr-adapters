@@ -114,6 +114,7 @@ def train_adapter(
     adapter: AdapterConfig, config: TrainConfig,
     train: SplitCache, train_positives: list[set[int]],
     val: SplitCache, val_positives: list[set[int]], output_dir: Path,
+    *, detailed_mixer_diagnostics: bool = False,
 ) -> dict:
     if train.split != "train" or val.split != "val":
         raise ValueError("adapter training requires train and val caches in that order")
@@ -129,7 +130,7 @@ def train_adapter(
     with torch.random.fork_rng(devices=[]):
         torch.random.default_generator.manual_seed(config.seed)
         model = MLPAdapter(adapter)
-    monitor = MixerMonitor(model) if model.mixer is not None else None
+    monitor = MixerMonitor(model, detailed=detailed_mixer_diagnostics) if model.mixer is not None else None
     rng = torch.Generator().manual_seed(config.seed)
     optimizer = torch.optim.Adam((p for p in model.parameters() if p.requires_grad), lr=config.learning_rate)
     train_queries = train.query.descriptors.detach()
